@@ -469,7 +469,7 @@ func loadConfig(name string) {
 
 func main() {
 	if len(os.Args) != 2 {
-		log.Fatal("Usage: %s <config>", os.Args[0])
+		log.Fatalf("Usage: %s <config>", os.Args[0])
 	}
 	loadConfig(os.Args[1])
 	h := handler
