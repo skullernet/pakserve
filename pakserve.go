@@ -159,33 +159,38 @@ func matchWhiteList(list []*regexp.Regexp, s string) bool {
 	return false
 }
 
+func closeWithError(w http.ResponseWriter, r *http.Request, code int) {
+	if r.ProtoAtLeast(1, 1) {
+		w.Header().Set("Connection", "close")
+	}
+	w.WriteHeader(code)
+}
+
 func handler(w http.ResponseWriter, r *http.Request) {
 	if filepath.Separator != '/' && strings.ContainsRune(r.URL.Path, filepath.Separator) {
-		http.Error(w, "403 Forbidden", http.StatusForbidden)
+		closeWithError(w, r, http.StatusForbidden)
 		return
 	}
 
 	if !refererCheck.MatchString(r.Referer()) {
-		http.Error(w, "403 Forbidden", http.StatusForbidden)
+		closeWithError(w, r, http.StatusForbidden)
 		return
 	}
 
 	search, path := findSearchPath(r)
 	if search == nil || len(path) == 0 {
-		http.NotFound(w, r)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	allowPak := matchWhiteList(pakWhiteList, path)
 	allowDir := matchWhiteList(dirWhiteList, path)
 	if !allowPak && !allowDir {
-		http.NotFound(w, r)
+		w.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	hasGzip, hasDeflate := parseAcceptEncoding(r)
-
-	w.Header().Set("Content-Type", config.ContentType)
 
 	for _, s := range search {
 		if s.files == nil {
@@ -195,6 +200,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			}
 			f, err := os.Open(filepath.Join(s.path, path))
 			if err == nil {
+				w.Header().Set("Content-Type", config.ContentType)
 				http.ServeContent(w, r, "", time.Time{}, f)
 				f.Close()
 				return
@@ -217,13 +223,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			f, err := os.Open(s.path)
 			if err != nil {
 				log.Printf(`ERROR: %s`, err.Error())
-				http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
+				closeWithError(w, r, http.StatusInternalServerError)
 				return
 			}
 			defer f.Close()
 			reader = io.NewSectionReader(f, entry.offset, entry.size)
 		}
 
+		w.Header().Set("Content-Type", config.ContentType)
 		if entry.method != 0 {
 			// prefer gzip wrapping because it has CRC
 			switch {
@@ -241,7 +248,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.NotFound(w, r)
+	w.WriteHeader(http.StatusNotFound)
 }
 
 type LoggingResponseWriter struct {
