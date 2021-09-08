@@ -440,8 +440,8 @@ func loadConfig(name string) {
 	for _, r := range config.DirWhiteList {
 		dirWhiteList = append(dirWhiteList, regexp.MustCompile(r))
 	}
-	if !config.LogTimeStamps {
-		log.SetFlags(0)
+	if config.LogTimeStamps {
+		log.SetFlags(log.LstdFlags)
 	}
 	if len(config.SearchPaths) == 0 {
 		log.Fatal("No search paths configured")
@@ -468,6 +468,7 @@ func loadConfig(name string) {
 }
 
 func main() {
+	log.SetFlags(0)
 	if len(os.Args) != 2 {
 		log.Fatalf("Usage: %s <config>", os.Args[0])
 	}
