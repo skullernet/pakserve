@@ -222,7 +222,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "HEAD" {
 			f, err := os.Open(s.path)
 			if err != nil {
-				log.Printf(`ERROR: %s`, err.Error())
+				log.Printf(`ERROR: %s`, err)
 				closeWithError(w, r, http.StatusInternalServerError)
 				return
 			}
@@ -413,7 +413,7 @@ func scandir(name string) []*SearchPath {
 		}
 		s, err := scan(filepath.Join(name, v))
 		if err != nil {
-			log.Printf(`ERROR: scan "%s": %s`, v, err.Error())
+			log.Printf(`ERROR: scan "%s": %s`, v, err)
 			continue
 		}
 		sp = append(sp, s)
