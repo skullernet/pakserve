@@ -10,6 +10,7 @@ import (
 	"io"
 	"io/ioutil"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	pathpkg "path"
@@ -23,12 +24,12 @@ import (
 )
 
 type PakFileEntry struct {
-	method  uint16
 	offset  int64
-	size    int64 // raw (compressed) size
+	size    uint32 // raw (compressed) size
 	filecrc uint32
 	filelen uint32 // uncompressed size
 	mtime   uint32
+	method  uint16
 }
 
 type SearchPath struct {
@@ -72,7 +73,7 @@ var dirCache = make(map[string][]*SearchPath)
 func (entry *PakFileEntry) handleGzip(w http.ResponseWriter, r *io.SectionReader) {
 	var b [10]byte
 
-	w.Header().Set("Content-Length", strconv.FormatInt(entry.size+18, 10))
+	w.Header().Set("Content-Length", strconv.FormatInt(int64(entry.size)+18, 10))
 	w.Header().Set("Content-Encoding", "gzip")
 	w.WriteHeader(http.StatusOK)
 
@@ -100,7 +101,7 @@ func (entry *PakFileEntry) handleGzip(w http.ResponseWriter, r *io.SectionReader
 }
 
 func (entry *PakFileEntry) handleRaw(w http.ResponseWriter, r *io.SectionReader) {
-	w.Header().Set("Content-Length", strconv.FormatInt(entry.size, 10))
+	w.Header().Set("Content-Length", strconv.FormatInt(int64(entry.size), 10))
 	if entry.method != 0 {
 		// Send raw deflate stream (e.g. no zlib header/trailer).
 		// This violates RFC 2616 but works.
@@ -227,7 +228,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			defer f.Close()
-			reader = io.NewSectionReader(f, entry.offset, entry.size)
+			reader = io.NewSectionReader(f, entry.offset, int64(entry.size))
 		}
 
 		w.Header().Set("Content-Type", config.ContentType)
@@ -313,12 +314,17 @@ func scanpak(name string) (*SearchPath, error) {
 		if err := binary.Read(f, binary.LittleEndian, &entry); err != nil {
 			return nil, err
 		}
+		if entry.Filelen > math.MaxInt32 {
+			return nil, errors.New("pak: bad directory")
+		}
 		b := bytes.IndexByte(entry.Name[:], 0)
 		if b < 0 {
 			b = len(entry.Name)
 		}
-		search.files[strings.ToLower(string(entry.Name[:b]))] = PakFileEntry{
-			0, int64(entry.Filepos), int64(entry.Filelen), 0, 0, 0,
+		n := string(entry.Name[:b])
+		search.files[strings.ToLower(n)] = PakFileEntry{
+			offset: int64(entry.Filepos),
+			size:   entry.Filelen,
 		}
 	}
 	return search, nil
@@ -341,9 +347,17 @@ func scanzip(name string) (*SearchPath, error) {
 		if f.Mode()&os.ModeDir != 0 {
 			continue
 		}
+		if f.CompressedSize == math.MaxUint32 || f.UncompressedSize == math.MaxUint32 {
+			log.Printf(`WARNING: skipping oversize file "%s" in "%s"`, f.Name, name)
+			continue
+		}
 		search.files[strings.ToLower(f.Name)] = PakFileEntry{
-			f.Method, int64(ofs), int64(f.CompressedSize64),
-			f.CRC32, uint32(f.UncompressedSize64), uint32(f.Modified.Unix()),
+			offset:  ofs,
+			size:    f.CompressedSize,
+			filecrc: f.CRC32,
+			filelen: f.UncompressedSize,
+			mtime:   uint32(f.Modified.Unix()),
+			method:  f.Method,
 		}
 	}
 	return search, nil
