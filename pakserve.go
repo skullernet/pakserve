@@ -281,6 +281,12 @@ func logHandler(w http.ResponseWriter, r *http.Request) {
 		wl.status, length, encoding, r.Referer(), r.UserAgent())
 }
 
+func normalizeName(n string) string {
+	n = strings.ReplaceAll(n, `\`, `/`)
+	n = pathpkg.Clean("/" + n)
+	return strings.ToLower(n[1:])
+}
+
 func scanpak(name string) (*SearchPath, error) {
 	f, err := os.Open(name)
 	if err != nil {
@@ -322,7 +328,7 @@ func scanpak(name string) (*SearchPath, error) {
 			b = len(entry.Name)
 		}
 		n := string(entry.Name[:b])
-		search.files[strings.ToLower(n)] = PakFileEntry{
+		search.files[normalizeName(n)] = PakFileEntry{
 			offset: int64(entry.Filepos),
 			size:   entry.Filelen,
 		}
@@ -351,7 +357,7 @@ func scanzip(name string) (*SearchPath, error) {
 			log.Printf(`WARNING: skipping oversize file "%s" in "%s"`, f.Name, name)
 			continue
 		}
-		search.files[strings.ToLower(f.Name)] = PakFileEntry{
+		search.files[normalizeName(f.Name)] = PakFileEntry{
 			offset:  ofs,
 			size:    f.CompressedSize,
 			filecrc: f.CRC32,
