@@ -509,11 +509,11 @@ func main() {
 	}
 	loadConfig(os.Args[1])
 
-	h := handler
 	if config.LogLevel >= LogLevelDebug {
-		h = logHandler
+		http.HandleFunc("/", logHandler)
+	} else {
+		http.HandleFunc("/", handler)
 	}
-	http.HandleFunc("/", h)
 
 	if len(config.ListenTLS) > 0 {
 		go func() { log.Fatal(http.ListenAndServeTLS(config.ListenTLS, config.CertFile, config.KeyFile, nil)) }()
