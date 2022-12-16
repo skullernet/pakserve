@@ -36,8 +36,22 @@ file contents is reproduced below. Only "SearchPaths" parameter is mandatory.
 }
 ```
 
+## Parameters
+
 ### Listen
-IP address to bind to in "[host]:port" format. Default is ":8080".
+IP address to listen on for connections in "[host]:port" format. Default is
+":8080". Can be set to empty string if "ListenTLS" is non-empty to disable
+plain text connections.
+
+### ListenTLS
+IP address to listen on for TLS connections "[host]:port" format. Default is ""
+(don't listen for TLS connections).
+
+### CertFile
+Path to server certificate file if TLS is enabled. Default is "" (not set).
+
+### KeyFile
+Path to server private key if TLS is enabled. Default is "" (not set).
 
 ### ContentType
 Reply with this content type header. Default is "application/octet-stream".
@@ -100,10 +114,19 @@ errors are logged.
 ### LogTimeStamps
 If "true", prefix log lines with time stamps. Default "false".
 
-## Caveats
+## Signals
 
-* Modifying or removing packfiles while server is running will cause bad things
-  to happen. Regular files on disk can be added/removed/modified anytime.
+Upon receiving SIGHUP server will rescan all search paths specified in config
+file. This can be used for adding or removing pack files without restarting the
+server.
+
+## Notes
+
+* Modifying packfiles while server is running will cause bad things
+  to happen.
+* Packfiles can be added/removed while server is running, provided SIGHUP is
+  sent afterwards to rescan the search paths. Regular files on disk can be
+  added/removed anytime.
 * Server does not dynamically compress content. Data must be pre-compressed and
   stored in .pkz for this to work. However, server *will* dynamically
   decompress content if client doesn't support compression.
