@@ -222,15 +222,14 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 
+		f, err := os.Open(s.path)
+		if err != nil {
+			continue
+		}
+		defer f.Close()
+
 		var reader *io.SectionReader
 		if r.Method != "HEAD" {
-			f, err := os.Open(s.path)
-			if err != nil {
-				log.Printf(`ERROR: %s`, err)
-				closeWithError(w, r, http.StatusInternalServerError)
-				return
-			}
-			defer f.Close()
 			reader = io.NewSectionReader(f, entry.offset, int64(entry.size))
 		}
 
