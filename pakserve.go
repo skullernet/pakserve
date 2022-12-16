@@ -19,6 +19,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode"
 )
@@ -65,13 +66,13 @@ type Config struct {
 var config = Config{Listen: ":8080", ContentType: "application/octet-stream", PakWhiteList: []string{""}}
 
 var (
-	refererCheck *regexp.Regexp
-	pakWhiteList []*regexp.Regexp
-	dirWhiteList []*regexp.Regexp
-	searchPaths  []*SearchPathMatch
+	refererCheck     *regexp.Regexp
+	pakWhiteList     []*regexp.Regexp
+	dirWhiteList     []*regexp.Regexp
+	searchPaths      []*SearchPathMatch
+	dirCache         map[string][]*SearchPath
+	searchPathsMutex sync.RWMutex
 )
-
-var dirCache = make(map[string][]*SearchPath)
 
 func (entry *PakFileEntry) handleGzip(w http.ResponseWriter, r *io.SectionReader) {
 	var b [10]byte
@@ -130,6 +131,10 @@ func (entry *PakFileEntry) handleInflate(w http.ResponseWriter, r *io.SectionRea
 func findSearchPath(r *http.Request) (search []*SearchPath, path string) {
 	path = strings.ToLower(pathpkg.Clean(r.URL.Path))
 	longest := 0
+
+	searchPathsMutex.RLock()
+	defer searchPathsMutex.RUnlock()
+
 	for _, s := range searchPaths {
 		loc := s.match.FindStringIndex(path)
 		if loc != nil && loc[0] == 0 && loc[1] > longest {
@@ -137,6 +142,7 @@ func findSearchPath(r *http.Request) (search []*SearchPath, path string) {
 			longest = loc[1]
 		}
 	}
+
 	return search, path[longest:]
 }
 
@@ -481,33 +487,48 @@ func loadConfig(name string) {
 	if len(config.ListenTLS) > 0 && (len(config.CertFile) == 0 || len(config.KeyFile) == 0) {
 		log.Fatal("CertFile and KeyFile must be set if ListenTLS is set")
 	}
-	for k, v := range config.SearchPaths {
+	refererCheck = regexp.MustCompile(config.RefererCheck)
+}
+
+func printSearchPath(match string, sp []*SearchPath) {
+	log.Printf(`Search path for "%s":`, match)
+	for _, s := range sp {
+		if s.files == nil {
+			log.Println(s.path)
+		} else {
+			log.Printf("%s (%d files)", s.path, len(s.files))
+		}
+	}
+	log.Println("--------------------")
+}
+
+func scanSearchPaths() {
+	searchPathsMutex.Lock()
+	defer searchPathsMutex.Unlock()
+
+	searchPaths = make([]*SearchPathMatch, 0)
+	dirCache = make(map[string][]*SearchPath)
+
+	for match, dirs := range config.SearchPaths {
 		sp := make([]*SearchPath, 0)
-		for _, d := range v {
-			sp = append(sp, scandir(d)...)
+		for _, dir := range dirs {
+			sp = append(sp, scandir(dir)...)
 		}
 		if config.LogLevel >= LogLevelInfo {
-			log.Printf(`Search path for "%s":`, k)
-			for _, s := range sp {
-				if s.files == nil {
-					log.Println(s.path)
-				} else {
-					log.Printf("%s (%d files)", s.path, len(s.files))
-				}
-			}
-			log.Println("--------------------")
+			printSearchPath(match, sp)
 		}
-		searchPaths = append(searchPaths, &SearchPathMatch{regexp.MustCompile(k), sp})
+		searchPaths = append(searchPaths, &SearchPathMatch{regexp.MustCompile(match), sp})
 	}
-	refererCheck = regexp.MustCompile(config.RefererCheck)
 }
 
 func main() {
 	log.SetFlags(0)
+
 	if len(os.Args) != 2 {
 		log.Fatalf("Usage: %s <config>", os.Args[0])
 	}
 	loadConfig(os.Args[1])
+	scanSearchPaths()
 
 	if config.LogLevel >= LogLevelDebug {
 		http.HandleFunc("/", logHandler)
@@ -523,5 +544,5 @@ func main() {
 		go func() { log.Fatal(http.ListenAndServe(config.Listen, nil)) }()
 	}
 
-	<-(chan int)(nil)
+	waitForSignal()
 }
