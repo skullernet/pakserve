@@ -107,7 +107,7 @@ func (entry *PakFileEntry) handleRaw(w http.ResponseWriter, r *io.SectionReader)
 	w.Header().Set("Content-Length", strconv.FormatInt(int64(entry.size), 10))
 	if entry.method != 0 {
 		// Send raw deflate stream (e.g. no zlib header/trailer).
-		// This violates RFC 2616 but works.
+		// This violates RFC 2616 but works with libcurl.
 		w.Header().Set("Content-Encoding", "deflate")
 	}
 	w.WriteHeader(http.StatusOK)
