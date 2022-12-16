@@ -61,18 +61,18 @@ type Config struct {
 	KeyFile       string             `yaml:"KeyFile"`
 	ContentType   string             `yaml:"ContentType"`
 	RefererCheck  string             `yaml:"RefererCheck"`
-	PakWhiteList  []string           `yaml:"PakWhiteList"`
+	PakBlackList  []string           `yaml:"PakBlackList"`
 	DirWhiteList  []string           `yaml:"DirWhiteList"`
 	SearchPaths   []ConfigSearchPath `yaml:"SearchPaths"`
 	LogLevel      int                `yaml:"LogLevel"`
 	LogTimeStamps bool               `yaml:"LogTimeStamps"`
 }
 
-var config = Config{Listen: ":8080", ContentType: "application/octet-stream", PakWhiteList: []string{""}}
+var config = Config{Listen: ":8080", ContentType: "application/octet-stream"}
 
 var (
 	refererCheck     *regexp.Regexp
-	pakWhiteList     []*regexp.Regexp
+	pakBlackList     []*regexp.Regexp
 	dirWhiteList     []*regexp.Regexp
 	searchPaths      []CompiledSearchPath
 	dirCache         map[string][]SearchPath
@@ -165,7 +165,7 @@ func parseAcceptEncoding(r *http.Request) (hasGzip, hasDeflate bool) {
 	return
 }
 
-func matchWhiteList(list []*regexp.Regexp, s string) bool {
+func matchRegexpList(list []*regexp.Regexp, s string) bool {
 	for _, r := range list {
 		if r.MatchString(s) {
 			return true
@@ -198,8 +198,8 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allowPak := matchWhiteList(pakWhiteList, path)
-	allowDir := matchWhiteList(dirWhiteList, path)
+	allowPak := !matchRegexpList(pakBlackList, path)
+	allowDir := matchRegexpList(dirWhiteList, path)
 	if !allowPak && !allowDir {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -474,8 +474,8 @@ func loadConfig(name string) {
 	if err = yaml.Unmarshal(b, &config); err != nil {
 		log.Fatal(err)
 	}
-	for _, r := range config.PakWhiteList {
-		pakWhiteList = append(pakWhiteList, regexp.MustCompile(r))
+	for _, r := range config.PakBlackList {
+		pakBlackList = append(pakBlackList, regexp.MustCompile(r))
 	}
 	for _, r := range config.DirWhiteList {
 		dirWhiteList = append(dirWhiteList, regexp.MustCompile(r))

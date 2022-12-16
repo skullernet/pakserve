@@ -4,7 +4,7 @@ ContentType: application/x-quake2-data
 
 RefererCheck: ^quake2://
 
-PakWhiteList: [""]
+PakBlackList: []
 
 DirWhiteList:
   - ^(players|models|sprites|sound|maps|textures|env|pics)/

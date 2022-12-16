@@ -23,7 +23,7 @@ ContentType: application/x-quake2-data
 
 RefererCheck: ^quake2://
 
-PakWhiteList: [""]
+PakBlackList: []
 
 DirWhiteList:
   - ^(players|models|sprites|sound|maps|textures|env|pics)/
@@ -68,9 +68,9 @@ Reply with this content type header. Default is "application/octet-stream".
 Regular expression to check HTTP referer and return 403 if it doesn't match.
 Default is "" (allow any referer).
 
-### PakWhiteList
-Array of regular expressions that describe quake paths that are searched in
-packfiles. Default is single entry "" (permit everything).
+### PakBlackList
+Array of regular expressions that describe quake paths that are not searched in
+packfiles. Default is empty array (allow everything).
 
 ### DirWhiteList
 Array of regular expressions that describe quake paths that are searched in
