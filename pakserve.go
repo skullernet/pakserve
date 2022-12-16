@@ -50,6 +50,9 @@ const (
 
 type Config struct {
 	Listen        string
+	ListenTLS     string
+	CertFile      string
+	KeyFile       string
 	ContentType   string
 	RefererCheck  string
 	PakWhiteList  []string
@@ -473,6 +476,12 @@ func loadConfig(name string) {
 	if len(config.SearchPaths) == 0 {
 		log.Fatal("No search paths configured")
 	}
+	if len(config.Listen)+len(config.ListenTLS) == 0 {
+		log.Fatal("At least one of Listen or ListenTLS must be set")
+	}
+	if len(config.ListenTLS) > 0 && (len(config.CertFile) == 0 || len(config.KeyFile) == 0) {
+		log.Fatal("CertFile and KeyFile must be set if ListenTLS is set")
+	}
 	for k, v := range config.SearchPaths {
 		sp := make([]*SearchPath, 0)
 		for _, d := range v {
@@ -500,10 +509,20 @@ func main() {
 		log.Fatalf("Usage: %s <config>", os.Args[0])
 	}
 	loadConfig(os.Args[1])
+
 	h := handler
 	if config.LogLevel >= LogLevelDebug {
 		h = logHandler
 	}
 	http.HandleFunc("/", h)
-	log.Fatal(http.ListenAndServe(config.Listen, nil))
+
+	if len(config.ListenTLS) > 0 {
+		go func() { log.Fatal(http.ListenAndServeTLS(config.ListenTLS, config.CertFile, config.KeyFile, nil)) }()
+	}
+
+	if len(config.Listen) > 0 {
+		go func() { log.Fatal(http.ListenAndServe(config.Listen, nil)) }()
+	}
+
+	<-(chan int)(nil)
 }
