@@ -12,28 +12,36 @@ being downloaded.
 
 ## Configuration
 
-Server accepts configuration in JSON format. Path to configuration file must be
+Server accepts configuration in YAML format. Path to configuration file must be
 specified as the first (and only) command line argument. Example configuration
 file contents is reproduced below. Only "SearchPaths" parameter is mandatory.
 
-```json
-{
-    "Listen": ":8080",
-    "ContentType": "application/x-quake2-data",
-    "RefererCheck": "^quake2://",
-    "PakWhiteList": [ "" ],
-    "DirWhiteList": [
-        "^(players|models|sprites|sound|maps|textures|env|pics)/",
-        "^[\\w\\-]*[.]filelist$",
-        "^[\\w\\-]+[.](pak|pkz)$"
-    ],
-    "SearchPaths": {
-        "^/(baseq2/|openffa/|opentdm/)?": ["/home/user/quake2/baseq2"],
-        "^/ctf/": ["/home/user/quake2/ctf", "/home/user/quake2/baseq2"]
-    },
-    "LogLevel": 2,
-    "LogTimeStamps": true
-}
+```yaml
+Listen: :8080
+
+ContentType: application/x-quake2-data
+
+RefererCheck: ^quake2://
+
+PakWhiteList: [""]
+
+DirWhiteList:
+  - ^(players|models|sprites|sound|maps|textures|env|pics)/
+  - ^[\w\-]*[.]filelist$
+  - ^[\w\-]+[.](pak|pkz)$
+
+SearchPaths:
+  - Match: ^/(baseq2/|openffa/|opentdm/)?
+    Search:
+      - /home/user/quake2/baseq2
+
+  - Match: ^/ctf/
+    Search:
+      - /home/user/quake2/ctf
+      - /home/user/quake2/baseq2
+
+LogLevel: 2
+LogTimeStamps: true
 ```
 
 ## Parameters

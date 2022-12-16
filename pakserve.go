@@ -5,8 +5,8 @@ import (
 	"bytes"
 	"compress/flate"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
+	"gopkg.in/yaml.v3"
 	"io"
 	"io/ioutil"
 	"log"
@@ -38,7 +38,7 @@ type SearchPath struct {
 	files map[string]PakFileEntry
 }
 
-type SearchPathMatch struct {
+type CompiledSearchPath struct {
 	match  *regexp.Regexp
 	search []*SearchPath
 }
@@ -49,18 +49,23 @@ const (
 	LogLevelDebug
 )
 
+type ConfigSearchPath struct {
+	Match  string   `yaml:"Match"`
+	Search []string `yaml:"Search"`
+}
+
 type Config struct {
-	Listen        string
-	ListenTLS     string
-	CertFile      string
-	KeyFile       string
-	ContentType   string
-	RefererCheck  string
-	PakWhiteList  []string
-	DirWhiteList  []string
-	SearchPaths   map[string][]string
-	LogLevel      int
-	LogTimeStamps bool
+	Listen        string             `yaml:"Listen"`
+	ListenTLS     string             `yaml:"ListenTLS"`
+	CertFile      string             `yaml:"CertFile"`
+	KeyFile       string             `yaml:"KeyFile"`
+	ContentType   string             `yaml:"ContentType"`
+	RefererCheck  string             `yaml:"RefererCheck"`
+	PakWhiteList  []string           `yaml:"PakWhiteList"`
+	DirWhiteList  []string           `yaml:"DirWhiteList"`
+	SearchPaths   []ConfigSearchPath `yaml:"SearchPaths"`
+	LogLevel      int                `yaml:"LogLevel"`
+	LogTimeStamps bool               `yaml:"LogTimeStamps"`
 }
 
 var config = Config{Listen: ":8080", ContentType: "application/octet-stream", PakWhiteList: []string{""}}
@@ -69,7 +74,7 @@ var (
 	refererCheck     *regexp.Regexp
 	pakWhiteList     []*regexp.Regexp
 	dirWhiteList     []*regexp.Regexp
-	searchPaths      []*SearchPathMatch
+	searchPaths      []*CompiledSearchPath
 	dirCache         map[string][]*SearchPath
 	searchPathsMutex sync.RWMutex
 )
@@ -466,7 +471,7 @@ func loadConfig(name string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	if err = json.Unmarshal(b, &config); err != nil {
+	if err = yaml.Unmarshal(b, &config); err != nil {
 		log.Fatal(err)
 	}
 	for _, r := range config.PakWhiteList {
@@ -506,18 +511,18 @@ func scanSearchPaths() {
 	searchPathsMutex.Lock()
 	defer searchPathsMutex.Unlock()
 
-	searchPaths = make([]*SearchPathMatch, 0)
+	searchPaths = make([]*CompiledSearchPath, 0)
 	dirCache = make(map[string][]*SearchPath)
 
-	for match, dirs := range config.SearchPaths {
+	for _, cfg := range config.SearchPaths {
 		sp := make([]*SearchPath, 0)
-		for _, dir := range dirs {
+		for _, dir := range cfg.Search {
 			sp = append(sp, scandir(dir)...)
 		}
 		if config.LogLevel >= LogLevelInfo {
-			printSearchPath(match, sp)
+			printSearchPath(cfg.Match, sp)
 		}
-		searchPaths = append(searchPaths, &SearchPathMatch{regexp.MustCompile(match), sp})
+		searchPaths = append(searchPaths, &CompiledSearchPath{regexp.MustCompile(cfg.Match), sp})
 	}
 }
 

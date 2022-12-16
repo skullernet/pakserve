@@ -1,0 +1,25 @@
+Listen: :8080
+
+ContentType: application/x-quake2-data
+
+RefererCheck: ^quake2://
+
+PakWhiteList: [""]
+
+DirWhiteList:
+  - ^(players|models|sprites|sound|maps|textures|env|pics)/
+  - ^[\w\-]*[.]filelist$
+  - ^[\w\-]+[.](pak|pkz)$
+
+SearchPaths:
+  - Match: ^/(baseq2/|openffa/|opentdm/)?
+    Search:
+      - /home/user/quake2/baseq2
+
+  - Match: ^/ctf/
+    Search:
+      - /home/user/quake2/ctf
+      - /home/user/quake2/baseq2
+
+LogLevel: 2
+LogTimeStamps: true
