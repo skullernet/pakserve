@@ -40,7 +40,7 @@ type SearchPath struct {
 
 type CompiledSearchPath struct {
 	match  *regexp.Regexp
-	search []*SearchPath
+	search []SearchPath
 }
 
 const (
@@ -74,8 +74,8 @@ var (
 	refererCheck     *regexp.Regexp
 	pakWhiteList     []*regexp.Regexp
 	dirWhiteList     []*regexp.Regexp
-	searchPaths      []*CompiledSearchPath
-	dirCache         map[string][]*SearchPath
+	searchPaths      []CompiledSearchPath
+	dirCache         map[string][]SearchPath
 	searchPathsMutex sync.RWMutex
 )
 
@@ -133,7 +133,7 @@ func (entry *PakFileEntry) handleInflate(w http.ResponseWriter, r *io.SectionRea
 }
 
 // returns the longest match so that "^/" pattern works as expected
-func findSearchPath(r *http.Request) (search []*SearchPath, path string) {
+func findSearchPath(r *http.Request) (search []SearchPath, path string) {
 	path = strings.ToLower(pathpkg.Clean(r.URL.Path))
 	longest := 0
 
@@ -392,7 +392,7 @@ func atoi(s string) (v int, err error) {
 	return 0, strconv.ErrSyntax
 }
 
-func scandir(name string) []*SearchPath {
+func scandir(name string) []SearchPath {
 	sp, ok := dirCache[name]
 	if ok {
 		return sp
@@ -438,7 +438,7 @@ func scandir(name string) []*SearchPath {
 		}
 	})
 
-	sp = make([]*SearchPath, 0, len(paks)+1)
+	sp = make([]SearchPath, 0, len(paks)+1)
 	for _, v := range paks {
 		scan := scanpak
 		if strings.HasSuffix(strings.ToLower(v), ".pkz") {
@@ -449,11 +449,11 @@ func scandir(name string) []*SearchPath {
 			log.Printf(`ERROR: scan "%s": %s`, v, err)
 			continue
 		}
-		sp = append(sp, s)
+		sp = append(sp, *s)
 	}
 
 	if len(dirWhiteList) > 0 {
-		sp = append(sp, &SearchPath{name, nil})
+		sp = append(sp, SearchPath{name, nil})
 	} else if len(sp) == 0 {
 		log.Printf(`WARNING: directory "%s" ignored due to empty DirWhiteList`, name)
 	}
@@ -495,7 +495,7 @@ func loadConfig(name string) {
 	refererCheck = regexp.MustCompile(config.RefererCheck)
 }
 
-func printSearchPath(match string, sp []*SearchPath) {
+func printSearchPath(match string, sp []SearchPath) {
 	log.Printf(`Search path for "%s":`, match)
 	for _, s := range sp {
 		if s.files == nil {
@@ -511,18 +511,18 @@ func scanSearchPaths() {
 	searchPathsMutex.Lock()
 	defer searchPathsMutex.Unlock()
 
-	searchPaths = make([]*CompiledSearchPath, 0)
-	dirCache = make(map[string][]*SearchPath)
+	searchPaths = make([]CompiledSearchPath, 0, len(config.SearchPaths))
+	dirCache = make(map[string][]SearchPath)
 
 	for _, cfg := range config.SearchPaths {
-		sp := make([]*SearchPath, 0)
+		sp := make([]SearchPath, 0)
 		for _, dir := range cfg.Search {
 			sp = append(sp, scandir(dir)...)
 		}
 		if config.LogLevel >= LogLevelInfo {
 			printSearchPath(cfg.Match, sp)
 		}
-		searchPaths = append(searchPaths, &CompiledSearchPath{regexp.MustCompile(cfg.Match), sp})
+		searchPaths = append(searchPaths, CompiledSearchPath{regexp.MustCompile(cfg.Match), sp})
 	}
 }
 
