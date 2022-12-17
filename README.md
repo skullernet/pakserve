@@ -115,7 +115,8 @@ paths like this:
 ```
 
 Using catch-all regular expression such as `^/(baseq2/)?` is recommended in
-this case.
+this case. By this convention, all top level filelists should be placed in
+`baseq2`.
 
 ### LogLevel
 If ≥ 1, log search paths. If ≥ 2, log requests on stderr. By default only
