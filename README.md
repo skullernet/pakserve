@@ -14,7 +14,7 @@ being downloaded.
 
 Server accepts configuration in YAML format. Path to configuration file must be
 specified as the first (and only) command line argument. Example configuration
-file contents is reproduced below. Only "SearchPaths" parameter is mandatory.
+file contents is reproduced below. Only `SearchPaths` parameter is mandatory.
 
 ```yaml
 Listen: :8080
@@ -47,26 +47,28 @@ LogTimeStamps: true
 ## Parameters
 
 ### Listen
-IP address to listen on for connections in "[host]:port" format. Default is
-":8080". Can be set to empty string if "ListenTLS" is non-empty to disable
+IP address to listen on for connections in `[host]:port` format. Default is
+`:8080`. Can be set to empty string if `ListenTLS` is non-empty to disable
 plain text connections.
 
 ### ListenTLS
-IP address to listen on for TLS connections "[host]:port" format. Default is ""
-(don't listen for TLS connections).
+IP address to listen on for TLS connections `[host]:port` format. Default is
+empty string (don't listen for TLS connections).
 
 ### CertFile
-Path to server certificate file if TLS is enabled. Default is "" (not set).
+Path to server certificate file if `ListenTLS` is enabled. Default is empty
+string (not set).
 
 ### KeyFile
-Path to server private key if TLS is enabled. Default is "" (not set).
+Path to server private key if `ListenTLS` is enabled. Default is empty string
+(not set).
 
 ### ContentType
-Reply with this content type header. Default is "application/octet-stream".
+Reply with this content type header. Default is `application/octet-stream`.
 
 ### RefererCheck
 Regular expression to check HTTP referer and return 403 if it doesn't match.
-Default is "" (allow any referer).
+Default is empty string (allow any referer).
 
 ### PakBlackList
 Array of regular expressions that describe quake paths that are not searched in
@@ -94,8 +96,8 @@ match lower case strings only.
 
 If multiple regular expressions match the request path, the longest match wins.
 
-Care should be taken when serving downloads with "game" variable unset on the
-Quake 2 server. Some clients properly use "baseq2" as gamedir, which results in
+Care should be taken when serving downloads with `game` variable unset on the
+Quake 2 server. Some clients properly use `baseq2` as gamedir, which results in
 request paths like this:
 
 
@@ -120,7 +122,7 @@ If ≥ 1, log search paths. If ≥ 2, log requests on stderr. By default only
 errors are logged.
 
 ### LogTimeStamps
-If "true", prefix log lines with time stamps. Default "false".
+If `true`, prefix log lines with time stamps. Default `false`.
 
 ## Signals
 
