@@ -10,11 +10,16 @@ compressed format, or from regular files on disk. Access control in form of
 white lists is supported to prevent sensitive data (e.g., config files) from
 being downloaded.
 
+Server is just a single binary without dependencies and is very easy to set up.
+Running pakserve is highly recommended for everyone hosting a public Quake 2
+server.
+
 ## Configuration
 
 Server accepts configuration in YAML format. Path to configuration file must be
-specified as the first (and only) command line argument. Example configuration
-file contents is reproduced below. Only `SearchPaths` parameter is mandatory.
+specified as the first (and only) command line argument. Example [configuration
+file](./pakserve.yml) contents is reproduced below. Only `SearchPaths` parameter
+is mandatory.
 
 ```yaml
 Listen: :8080
@@ -135,9 +140,15 @@ server.
 
 * Modifying packfiles while server is running will cause bad things
   to happen.
+
 * Packfiles can be added/removed while server is running, provided SIGHUP is
   sent afterwards to rescan the search paths. Regular files on disk can be
   added/removed anytime.
+
 * Server does not dynamically compress content. Data must be pre-compressed and
-  stored in .pkz for this to work. However, server *will* dynamically
-  decompress content if client doesn't support compression.
+  stored in .pkz for this to work. It is highly recommended that existing .pak
+  files are converted to .pkz. This can be done using bundled [pakutil](./pakutil)
+  utility.
+
+* If HTTP client doesn't support compression, server *will* dynamically
+  decompress content from .pkz.
