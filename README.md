@@ -18,8 +18,8 @@ server.
 
 Server accepts configuration in YAML format. Path to configuration file must be
 specified as the first (and only) command line argument. Example [configuration
-file](./pakserve.yml) contents is reproduced below. Only `SearchPaths` parameter
-is mandatory.
+file](./pakserve/pakserve.yml) contents is reproduced below. Only `SearchPaths`
+parameter is mandatory.
 
 ```yaml
 Listen: :8080
