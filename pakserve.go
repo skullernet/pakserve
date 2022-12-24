@@ -2,10 +2,9 @@ package main
 
 import (
 	"archive/zip"
-	"bytes"
 	"compress/flate"
 	"encoding/binary"
-	"errors"
+	"github.com/skullernet/pakserve/pak"
 	"gopkg.in/yaml.v3"
 	"io"
 	"io/ioutil"
@@ -301,49 +300,17 @@ func normalizeName(n string) string {
 }
 
 func scanpak(name string) (*SearchPath, error) {
-	f, err := os.Open(name)
+	r, err := pak.OpenReader(name)
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer r.Close()
 
-	var header struct {
-		Ident  uint32
-		Dirofs uint32
-		Dirlen uint32
-	}
-	if err := binary.Read(f, binary.LittleEndian, &header); err != nil {
-		return nil, err
-	}
-	if header.Ident != 'P'|'A'<<8|'C'<<16|'K'<<24 {
-		return nil, errors.New("pak: bad ident")
-	}
-	if _, err := f.Seek(int64(header.Dirofs), io.SeekStart); err != nil {
-		return nil, err
-	}
-
-	numFiles := int(header.Dirlen / 64)
-	search := &SearchPath{name, make(map[string]PakFileEntry, numFiles)}
-	for i := 0; i < numFiles; i++ {
-		var entry struct {
-			Name    [56]byte
-			Filepos uint32
-			Filelen uint32
-		}
-		if err := binary.Read(f, binary.LittleEndian, &entry); err != nil {
-			return nil, err
-		}
-		if entry.Filelen > math.MaxInt32 {
-			return nil, errors.New("pak: bad directory")
-		}
-		b := bytes.IndexByte(entry.Name[:], 0)
-		if b < 0 {
-			b = len(entry.Name)
-		}
-		n := string(entry.Name[:b])
-		search.files[normalizeName(n)] = PakFileEntry{
-			offset: int64(entry.Filepos),
-			size:   entry.Filelen,
+	search := &SearchPath{name, make(map[string]PakFileEntry, len(r.File))}
+	for _, f := range r.File {
+		search.files[normalizeName(f.Name)] = PakFileEntry{
+			offset: int64(f.Filepos),
+			size:   f.Filelen,
 		}
 	}
 	return search, nil
